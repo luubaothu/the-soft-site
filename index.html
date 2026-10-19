@@ -641,7 +641,7 @@
         
         <div>
           <!-- CHIẾC LỌ ĐỰNG SAO THỦY TINH (Lưu mãi mãi & đồng bộ để mọi người cùng đọc tâm trạng của nhau) -->
-          <div class="mb-5 bg-pinksoft/40 border-2 border-choco rounded-3xl p-3.5 sm:p-5 flex flex-col items-center relative overflow-hidden">
+          <div class="mb-5 bg-pinksoft/40 border-2 border-choco rounded-3xl px-2.5 sm:px-3.5 py-3.5 sm:py-4 flex flex-col items-center relative overflow-hidden">
             <div class="flex items-center justify-between gap-2 w-full mb-2 px-1">
               <span class="font-heading font-bold text-xs sm:text-sm flex items-center gap-1 whitespace-nowrap">
                 ✨ Chiếc Lọ Đựng Sao Chung
@@ -675,7 +675,7 @@
             </div>
 
             <!-- Thẻ đọc tâm trạng / lời nhắn trong hộp sao của nhau -->
-            <div class="w-full bg-white/95 border-2 border-choco rounded-2xl p-3 mt-1.5 shadow-sm">
+            <div class="w-full bg-white/95 border-2 border-choco rounded-2xl px-2.5 py-2.5 mt-1.5 shadow-sm">
               <div class="flex items-center justify-between gap-1 mb-1">
                 <span id="starReaderAuthor" class="text-[11px] font-bold text-pinkdark truncate">
                   💡 Hộp sao tâm trạng của chúng mình
@@ -687,17 +687,17 @@
               <p id="starPreviewText" class="text-xs font-semibold text-choco/90 text-center py-1 leading-relaxed">
                 Chạm vào bất kỳ ngôi sao nào trong lọ hoặc bấm nút bên dưới để đọc tâm trạng của mọi người nhé!
               </p>
-              <div class="flex flex-wrap items-center justify-between gap-1 mt-2 pt-2 border-t border-dashed border-choco/20">
-                <button onclick="stepStarReader(-1)" class="bg-cream hover:bg-butter px-2.5 py-1 rounded-xl border border-choco text-[10px] sm:text-[11px] font-bold transition text-center whitespace-nowrap">
+              <div class="flex items-center justify-between gap-1 mt-2 pt-2 border-t border-dashed border-choco/20">
+                <button onclick="stepStarReader(-1)" class="bg-cream hover:bg-butter px-2 py-1 rounded-xl border border-choco text-[10px] font-bold transition text-center whitespace-nowrap">
                   ◀ Sao trước
                 </button>
-                <button onclick="readRandomStarInJar()" class="bg-pastelpink/80 hover:bg-pastelpink px-2.5 py-1 rounded-xl border border-choco text-[10px] sm:text-[11px] font-bold transition text-center whitespace-nowrap">
+                <button onclick="readRandomStarInJar()" class="bg-pastelpink/80 hover:bg-pastelpink px-2 py-1 rounded-xl border border-choco text-[10px] font-bold transition text-center whitespace-nowrap">
                   🎲 Ngẫu nhiên
                 </button>
-                <button id="starReaderHugBtn" onclick="hugCurrentPreviewStar()" class="bg-mint/80 hover:bg-mint px-2.5 py-1 rounded-xl border border-choco text-[10px] sm:text-[11px] font-bold transition text-center whitespace-nowrap">
+                <button id="starReaderHugBtn" onclick="hugCurrentPreviewStar()" class="bg-mint/80 hover:bg-mint px-2 py-1 rounded-xl border border-choco text-[10px] font-bold transition text-center whitespace-nowrap">
                   🫂 Ôm (0)
                 </button>
-                <button onclick="stepStarReader(1)" class="bg-cream hover:bg-butter px-2.5 py-1 rounded-xl border border-choco text-[10px] sm:text-[11px] font-bold transition text-center whitespace-nowrap">
+                <button onclick="stepStarReader(1)" class="bg-cream hover:bg-butter px-2 py-1 rounded-xl border border-choco text-[10px] font-bold transition text-center whitespace-nowrap">
                   Sao tiếp ▶
                 </button>
               </div>
