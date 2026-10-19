@@ -1988,12 +1988,13 @@
       }).join('');
 
       // Cập nhật khung đọc sao hiện tại
+      const authorEl = document.getElementById('starReaderAuthor');
+      const indexEl = document.getElementById('starReaderIndex');
+      const previewEl = document.getElementById('starPreviewText');
+      const hugBtn = document.getElementById('starReaderHugBtn');
+
       if (items.length > 0) {
         const activeItem = items[currentStarIndex] || items[0];
-        const authorEl = document.getElementById('starReaderAuthor');
-        const indexEl = document.getElementById('starReaderIndex');
-        const previewEl = document.getElementById('starPreviewText');
-        const hugBtn = document.getElementById('starReaderHugBtn');
         const icon = activeItem.type === 'candy' ? '⭐ Ngôi sao của' : '🌧️ Tâm sự của';
         const niceDate = formatStarDateTime(activeItem);
         const dateStr = niceDate ? ` • ${niceDate}` : '';
@@ -2001,32 +2002,46 @@
         if (indexEl) indexEl.innerText = `Sao ${currentStarIndex + 1}/${items.length}`;
         if (previewEl) previewEl.innerText = `"${activeItem.content}"`;
         if (hugBtn) hugBtn.innerText = `🫂 Ôm (${activeItem.hugs || 1})`;
+      } else {
+        if (authorEl) authorEl.innerText = '⭐ Hộp sao trống';
+        if (indexEl) indexEl.innerText = '0 sao';
+        if (previewEl) previewEl.innerText = '"Chiếc lọ hiện đang sạch bóng, chưa có ngôi sao nào. Hãy là người đầu tiên gấp một ngôi sao nhé! ✨"';
+        if (hugBtn) hugBtn.innerText = '🫂 Ôm (0)';
       }
 
       // Render danh sách thẻ bên dưới (chạm vào thẻ cũng mở lên khung đọc sao)
-      container.innerHTML = items.map((item, idx) => {
-        const isCandy = item.type === 'candy';
-        const bgClass = isCandy ? 'bg-pinksoft/55' : 'bg-babyblue/30';
-        const badgeIcon = isCandy ? '⭐ Ngôi sao của:' : '🌧️ Nỗi lòng của:';
-        const privacyTag = item.isSecret ? '🤫 Bí mật' : '🌟 Công khai';
-        const niceDate = formatStarDateTime(item);
-        const dateTag = niceDate ? ` • ${niceDate}` : '';
-
-        return `
-          <div onclick="previewStarInJar(${idx}, true)" class="${bgClass} border-2 border-choco rounded-2xl p-3 text-xs cursor-pointer hover:brightness-98 transition">
-            <div class="flex flex-wrap items-center justify-between mb-1.5 gap-1">
-              <span class="font-bold text-choco">${badgeIcon} ${item.author}</span>
-              <span class="text-[10px] bg-white/85 px-2 py-0.5 rounded-full border border-choco whitespace-nowrap">${privacyTag}${dateTag}</span>
-            </div>
-            <p class="text-choco/90 mb-2 leading-relaxed">${item.content}</p>
-            <div class="flex justify-end">
-              <button onclick="event.stopPropagation(); sendHug(${idx})" class="bg-white hover:bg-butter px-2.5 py-1 rounded-full border border-choco font-bold text-[11px] transition">
-                🫂 Gửi cái ôm (${item.hugs || 1})
-              </button>
-            </div>
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-xs text-choco/60 font-medium">
+            ✨ Chiếc lọ hiện đang sạch bóng, chưa có ngôi sao nào.<br>
+            Hãy gấp một ngôi sao hoặc gửi một lời chúc ngọt ngào ở trên nhé!
           </div>
         `;
-      }).join('');
+      } else {
+        container.innerHTML = items.map((item, idx) => {
+          const isCandy = item.type === 'candy';
+          const bgClass = isCandy ? 'bg-pinksoft/55' : 'bg-babyblue/30';
+          const badgeIcon = isCandy ? '⭐ Ngôi sao của:' : '🌧️ Nỗi lòng của:';
+          const privacyTag = item.isSecret ? '🤫 Bí mật' : '🌟 Công khai';
+          const niceDate = formatStarDateTime(item);
+          const dateTag = niceDate ? ` • ${niceDate}` : '';
+
+          return `
+            <div onclick="previewStarInJar(${idx}, true)" class="${bgClass} border-2 border-choco rounded-2xl p-3 text-xs cursor-pointer hover:brightness-98 transition">
+              <div class="flex flex-wrap items-center justify-between mb-1.5 gap-1">
+                <span class="font-bold text-choco">${badgeIcon} ${item.author}</span>
+                <span class="text-[10px] bg-white/85 px-2 py-0.5 rounded-full border border-choco whitespace-nowrap">${privacyTag}${dateTag}</span>
+              </div>
+              <p class="text-choco/90 mb-2 leading-relaxed">${item.content}</p>
+              <div class="flex justify-end">
+                <button onclick="event.stopPropagation(); sendHug(${idx})" class="bg-white hover:bg-butter px-2.5 py-1 rounded-full border border-choco font-bold text-[11px] transition">
+                  🫂 Gửi cái ôm (${item.hugs || 1})
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
     }
 
     // XUẤT ẢNH STORY 9:16
