@@ -1127,9 +1127,10 @@
       showInPlaceQuote(badgeLabel, currentQuote.text);
     }
 
-    // ================= 3. LƯU TRỮ VĨNH VIỄN LỌ ĐỰNG SAO CỦA NGƯỜI DÙNG (KHÔNG BAO GIỜ XÓA) =================
-    const PERMANENT_STORAGE_KEY = 'the_soft_site_stars_permanent_v1';
+    // ================= 3. LƯU TRỮ HỘP SAO ĐỒNG BỘ 100% VỚI GOOGLE SHEET =================
+    const PERMANENT_STORAGE_KEY = 'the_soft_site_sheet_cache_v2';
     const LEGACY_STORAGE_KEYS = [
+      'the_soft_site_stars_permanent_v1',
       'imperfect_world_items_v4',
       'imperfect_world_items_v3',
       'imperfect_world_items_v2',
@@ -1137,69 +1138,22 @@
       'imperfect_world_items'
     ];
 
-    // Dữ liệu mẫu ban đầu cho Lọ Đựng Sao & Góc Đồng Cảm
-    const defaultItems = [
-      { id: 'default_1', type: 'candy', author: 'Mây Nhỏ', isSecret: false, content: 'Sáng nay đi làm thấy cô bán xôi cười tươi lắm, tự nhiên thấy yêu đời hẳn!', hugs: 6, color: '#FFB8CE' },
-      { id: 'default_2', type: 'candy', author: 'Bé Đậu', isSecret: false, content: 'Hôm nay bầu trời màu hồng tím lúc hoàng hôn siêu đẹp luôn!', hugs: 8, color: '#FFF3B0' },
-      { id: 'default_3', type: 'vent', author: 'Bí mật (L***)', isSecret: true, content: 'Hôm nay mình làm sai một việc ở chỗ làm, hơi buồn nhưng mình sẽ cố gắng sửa lại vào ngày mai.', hugs: 11, color: '#AED9E0' },
-      { id: 'default_4', type: 'candy', author: 'Trà Sữa Ít Đường', isSecret: false, content: 'Tự thưởng cho bản thân một chiếc bánh ngọt sau một tuần chạy deadline.', hugs: 5, color: '#B8F2E6' },
-      { id: 'default_5', type: 'candy', author: 'Một tâm hồn ẩn danh', isSecret: true, content: 'Cảm ơn vì một góc nhỏ ấm áp để mình biết mình không cô đơn.', hugs: 14, color: '#E2C6FF' }
-    ];
-
     const STAR_COLORS = ['#FFB8CE', '#FFF3B0', '#B8F2E6', '#AED9E0', '#E2C6FF', '#FFC8A2'];
 
-    // Sao lưu dự phòng vào IndexedDB để không bao giờ mất sao của người dùng
-    function saveBackupToIndexedDB(items) {
+    function clearAllLegacyStarCaches() {
+      LEGACY_STORAGE_KEYS.forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) {}
+      });
       try {
-        if (!window.indexedDB) return;
-        const req = window.indexedDB.open('TheSoftSitePermanentDB', 1);
-        req.onupgradeneeded = function(e) {
-          const db = e.target.result;
-          if (!db.objectStoreNames.contains('starJarStore')) {
-            db.createObjectStore('starJarStore');
-          }
-        };
-        req.onsuccess = function(e) {
-          const db = e.target.result;
-          const tx = db.transaction('starJarStore', 'readwrite');
-          tx.objectStore('starJarStore').put(items, 'all_user_stars');
-        };
+        if (window.indexedDB) {
+          window.indexedDB.deleteDatabase('TheSoftSitePermanentDB');
+        }
       } catch (e) {}
     }
 
     function restoreFromIndexedDBIfNeeded() {
-      try {
-        if (localStorage.getItem('the_soft_site_synced_from_sheet_v1') === 'true') return;
-        if (!window.indexedDB) return;
-        const req = window.indexedDB.open('TheSoftSitePermanentDB', 1);
-        req.onupgradeneeded = function(e) {
-          const db = e.target.result;
-          if (!db.objectStoreNames.contains('starJarStore')) {
-            db.createObjectStore('starJarStore');
-          }
-        };
-        req.onsuccess = function(e) {
-          const db = e.target.result;
-          const tx = db.transaction('starJarStore', 'readonly');
-          const getReq = tx.objectStore('starJarStore').get('all_user_stars');
-          getReq.onsuccess = function() {
-            if (localStorage.getItem('the_soft_site_synced_from_sheet_v1') === 'true') return;
-            const idbItems = getReq.result;
-            if (Array.isArray(idbItems) && idbItems.length > 0) {
-              const currentLocal = getStoredItems();
-              if (idbItems.length > currentLocal.length) {
-                const merged = mergeUniqueStarLists([idbItems, currentLocal]);
-                saveStoredItems(merged);
-                renderSharedItems(false);
-              } else {
-                saveBackupToIndexedDB(currentLocal);
-              }
-            } else {
-              saveBackupToIndexedDB(getStoredItems());
-            }
-          };
-        };
-      } catch (e) {}
+      // Xóa bộ nhớ tạm cũ trong trình duyệt để luôn hiển thị đúng 100% theo Google Sheet hiện tại
+      clearAllLegacyStarCaches();
     }
 
     function getStarUniqueKey(item) {
@@ -1231,54 +1185,22 @@
       return result;
     }
 
-    // Đọc danh sách sao hiện tại (nếu đã đồng bộ từ Google Sheet thì lấy chuẩn theo Google Sheet để khi xóa dòng trên Sheet là web tự xóa theo)
+    // Chỉ lấy danh sách sao đã đồng bộ từ Google Sheet (không gộp bộ nhớ cũ của trình duyệt)
     function getStoredItems() {
       try {
-        if (localStorage.getItem('the_soft_site_synced_from_sheet_v1') === 'true') {
-          const permRaw = localStorage.getItem(PERMANENT_STORAGE_KEY);
-          if (permRaw) {
-            const parsed = JSON.parse(permRaw);
-            if (Array.isArray(parsed)) return parsed;
-          }
+        const permRaw = localStorage.getItem(PERMANENT_STORAGE_KEY);
+        if (permRaw) {
+          const parsed = JSON.parse(permRaw);
+          if (Array.isArray(parsed)) return parsed;
         }
       } catch (e) {}
-
-      const collectedLists = [];
-      try {
-        const permRaw = localStorage.getItem(PERMANENT_STORAGE_KEY);
-        if (permRaw) collectedLists.push(JSON.parse(permRaw));
-      } catch (e) {}
-
-      LEGACY_STORAGE_KEYS.forEach(k => {
-        try {
-          const raw = localStorage.getItem(k);
-          if (raw) collectedLists.push(JSON.parse(raw));
-        } catch (e) {}
-      });
-
-      collectedLists.push(defaultItems);
-      const merged = mergeUniqueStarLists(collectedLists);
-
-      try {
-        localStorage.setItem(PERMANENT_STORAGE_KEY, JSON.stringify(merged));
-        localStorage.setItem('imperfect_world_items_v4', JSON.stringify(merged));
-      } catch (e) {}
-
-      return merged;
+      return [];
     }
 
-    function saveStoredItems(items, isAuthoritativeFromSheet = false) {
+    function saveStoredItems(items) {
       try {
-        if (isAuthoritativeFromSheet) {
-          localStorage.setItem('the_soft_site_synced_from_sheet_v1', 'true');
-          LEGACY_STORAGE_KEYS.forEach(k => {
-            try { localStorage.removeItem(k); } catch (e) {}
-          });
-        }
-        localStorage.setItem(PERMANENT_STORAGE_KEY, JSON.stringify(items));
-        localStorage.setItem('imperfect_world_items_v4', JSON.stringify(items));
+        localStorage.setItem(PERMANENT_STORAGE_KEY, JSON.stringify(Array.isArray(items) ? items : []));
       } catch (e) {}
-      saveBackupToIndexedDB(items);
     }
 
     // Lưu tên người dùng để lần sau vào lại vẫn giữ nguyên
@@ -1687,78 +1609,41 @@
     }
 
     // ================= KẾT NỐI GOOGLE SHEET & ĐỒNG BỘ HỘP SAO CHUNG CHO MỌI NGƯỜI =================
-    // Link Web App Google Sheet lưu dữ liệu hộp sao chung:
+    // ================= KẾT NỐI GOOGLE SHEET LÀM NGUỒN DỮ LIỆU DUY NHẤT =================
     const DEFAULT_GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxDcs0kKoQfvC6NZod66KeMqVqEYs-91NKh26eROJZQKts3Ezwuy68HkQcqvymOz45H/exec';
-    const GOOGLE_SHEET_STORAGE_KEY = 'the_soft_site_google_sheet_url_v1';
-    const SHARED_STAR_CHANNEL = 'the_soft_site_lbt_nhom_2026_stars_v2';
-    const LEGACY_STAR_CHANNEL = 'the_soft_site_lbt_to_2026_stars_v1';
     let currentStarIndex = 0;
-    let liveStarEventSource = null;
-
-    function getActiveGoogleSheetUrl() {
-      if (DEFAULT_GOOGLE_SHEET_URL && DEFAULT_GOOGLE_SHEET_URL.startsWith('https://script.google.com/')) {
-        return DEFAULT_GOOGLE_SHEET_URL.trim();
-      }
-      try {
-        const saved = localStorage.getItem(GOOGLE_SHEET_STORAGE_KEY);
-        if (saved && saved.trim().startsWith('https://script.google.com/')) {
-          return saved.trim();
-        }
-      } catch (e) {}
-      return '';
-    }
-
-    async function syncBatchWithGoogleSheet(sheetUrl) {
-      const targetUrl = sheetUrl || getActiveGoogleSheetUrl();
-      if (!targetUrl) return false;
-      try {
-        const currentItems = getStoredItems();
-        const resp = await fetch(targetUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'sync_batch', items: currentItems }),
-          redirect: 'follow'
-        });
-        const data = await resp.json();
-        if (data && Array.isArray(data.items)) {
-          const merged = mergeUniqueStarLists([data.items, currentItems]);
-          saveStoredItems(merged);
-          renderSharedItems(false);
-          updateSyncStatusBadge('🌐 Hộp sao chung', true);
-          return true;
-        }
-      } catch (e) {
-        try {
-          const respGet = await fetch(`${targetUrl}?action=list&t=${Date.now()}`, { redirect: 'follow' });
-          const dataGet = await respGet.json();
-          if (dataGet && Array.isArray(dataGet.items)) {
-            const merged = mergeUniqueStarLists([dataGet.items, getStoredItems()]);
-            saveStoredItems(merged);
-            renderSharedItems(false);
-            updateSyncStatusBadge('🌐 Hộp sao chung', true);
-            return true;
-          }
-        } catch (err2) {}
-      }
-      return false;
-    }
-
     let pendingSubmittingStars = [];
 
+    function getActiveGoogleSheetUrl() {
+      return DEFAULT_GOOGLE_SHEET_URL.trim();
+    }
+
+    function updateSyncStatusBadge(text, isOnline = true) {
+      const badge = document.getElementById('syncStatusBadge');
+      if (!badge) return;
+      badge.innerText = text;
+      badge.className = isOnline
+        ? 'text-[10px] font-bold bg-mint/70 px-2.5 py-0.5 rounded-full border border-choco/40 whitespace-nowrap'
+        : 'text-[10px] font-bold bg-butter/80 px-2.5 py-0.5 rounded-full border border-choco/40 whitespace-nowrap';
+    }
+
+    // Lấy danh sách sao trực tiếp từ Google Sheet (chuẩn 100% theo các dòng hiện có trên Google Sheet)
     async function fetchStarsFromGoogleSheet() {
       const targetUrl = getActiveGoogleSheetUrl();
       if (!targetUrl) return false;
       try {
-        const resp = await fetch(`${targetUrl}?action=list&t=${Date.now()}`, { redirect: 'follow' });
+        const resp = await fetch(`${targetUrl}?action=list&t=${Date.now()}`, {
+          method: 'GET',
+          cache: 'no-store',
+          redirect: 'follow'
+        });
         if (!resp.ok) return false;
         const data = await resp.json();
         if (data && Array.isArray(data.items)) {
-          if (data.items.length === 0 && localStorage.getItem('the_soft_site_synced_from_sheet_v1') !== 'true') {
-            return await syncBatchWithGoogleSheet(targetUrl);
-          }
-          // Giữ lại các ngôi sao vừa bấm gửi trong vòng 12 giây đang chờ ghi vào Sheet, còn lại lấy chuẩn 100% từ Google Sheet
+          // Chỉ giữ tạm ngôi sao người dùng vừa bấm gửi trong 10 giây đang chờ ghi vào Sheet,
+          // còn lại lấy đúng 100% danh sách từ Google Sheet (xóa trên Sheet là mất ngay trên web)
           const now = Date.now();
-          pendingSubmittingStars = pendingSubmittingStars.filter(p => (now - (p._queuedAt || 0)) < 12000);
+          pendingSubmittingStars = pendingSubmittingStars.filter(p => (now - (p._queuedAt || 0)) < 10000);
           const authoritativeList = mergeUniqueStarLists([
             pendingSubmittingStars.map(p => p.item),
             data.items
@@ -1797,6 +1682,7 @@
             method: 'GET',
             mode: 'no-cors'
           });
+          setTimeout(() => fetchStarsFromGoogleSheet(), 1500);
         } catch (err2) {}
       }
     }
@@ -1827,187 +1713,27 @@
       }
     }
 
-    function updateSyncStatusBadge(text, isOnline = true) {
-      const badge = document.getElementById('syncStatusBadge');
-      if (!badge) return;
-      badge.innerText = text;
-      badge.className = isOnline
-        ? 'text-[10px] font-bold bg-mint/70 px-2.5 py-0.5 rounded-full border border-choco/40 whitespace-nowrap'
-        : 'text-[10px] font-bold bg-butter/80 px-2.5 py-0.5 rounded-full border border-choco/40 whitespace-nowrap';
-    }
-
-    async function broadcastCloudPayload(payloadObj) {
-      const encoded = encodeURIComponent(JSON.stringify(payloadObj));
-      try {
-        await fetch(`https://ntfy.sh/${SHARED_STAR_CHANNEL}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: encoded
-        });
-      } catch (e) {}
-    }
-
     async function broadcastStarToCloud(starItem) {
-      pushStarToGoogleSheet(starItem);
-      await broadcastCloudPayload({
-        action: 'new_star',
-        item: starItem
-      });
+      await pushStarToGoogleSheet(starItem);
     }
 
     async function broadcastHugToCloud(starItem) {
-      pushHugToGoogleSheet(starItem);
-      await broadcastCloudPayload({
-        action: 'hug_star',
-        key: getStarUniqueKey(starItem),
-        hugs: starItem.hugs || 1
-      });
-    }
-
-    function decodeCloudPayload(rawStr) {
-      if (!rawStr) return null;
-      try {
-        return JSON.parse(rawStr);
-      } catch (e) {
-        try {
-          return JSON.parse(decodeURIComponent(rawStr));
-        } catch (e2) {
-          return null;
-        }
-      }
-    }
-
-    function applyCloudStarMessage(rawMessage) {
-      try {
-        const data = decodeCloudPayload(rawMessage);
-        if (!data || !data.action) return false;
-
-        if (data.action === 'config_sheet' && data.sheetUrl && data.sheetUrl.startsWith('https://script.google.com/')) {
-          try {
-            localStorage.setItem(GOOGLE_SHEET_STORAGE_KEY, data.sheetUrl.trim());
-          } catch (e) {}
-          fetchStarsFromGoogleSheet();
-          return true;
-        }
-
-        const currentItems = getStoredItems();
-
-        if (data.action === 'new_star' && data.item && data.item.content) {
-          const merged = mergeUniqueStarLists([[data.item], currentItems]);
-          const isNewAdded = merged.length > currentItems.length;
-          saveStoredItems(merged);
-          renderSharedItems(isNewAdded);
-          return true;
-        }
-
-        if (data.action === 'hug_star' && data.key) {
-          let changed = false;
-          currentItems.forEach(it => {
-            if (getStarUniqueKey(it) === data.key && (data.hugs || 1) > (it.hugs || 1)) {
-              it.hugs = data.hugs;
-              changed = true;
-            }
-          });
-          if (changed) {
-            saveStoredItems(currentItems);
-            renderSharedItems(false);
-            return true;
-          }
-        }
-      } catch (e) {}
-      return false;
+      await pushHugToGoogleSheet(starItem);
     }
 
     async function syncSharedStarsFromCloud() {
-      // 1. Lấy dữ liệu chuẩn trực tiếp từ Google Sheet (nếu bạn xóa 1 dòng trong Google Sheet thì trên web cũng tự động xóa theo)
-      const hasSheet = await fetchStarsFromGoogleSheet();
-      if (hasSheet) return;
-
-      // 2. Dự phòng khi không kết nối được Google Sheet
-      try {
-        const channels = [SHARED_STAR_CHANNEL, LEGACY_STAR_CHANNEL];
-        const cloudStars = [];
-        const hugUpdates = new Map();
-
-        for (const ch of channels) {
-          try {
-            const resp = await fetch(`https://ntfy.sh/${ch}/json?poll=1&since=0`);
-            if (!resp.ok) continue;
-            const text = await resp.text();
-            const lines = text.split('\n').filter(Boolean);
-
-            lines.forEach(line => {
-              try {
-                const evt = JSON.parse(line);
-                if (evt.event === 'message' && evt.message) {
-                  const payload = decodeCloudPayload(evt.message);
-                  if (!payload) return;
-                  if (payload.action === 'new_star' && payload.item && payload.item.content) {
-                    cloudStars.unshift(payload.item);
-                  } else if (payload.action === 'hug_star' && payload.key) {
-                    const prev = hugUpdates.get(payload.key) || 1;
-                    if ((payload.hugs || 1) > prev) {
-                      hugUpdates.set(payload.key, payload.hugs);
-                    }
-                  }
-                }
-              } catch (err) {}
-            });
-          } catch (chErr) {}
-        }
-
-        const localItems = getStoredItems();
-        const merged = mergeUniqueStarLists([cloudStars, localItems]);
-        merged.forEach(it => {
-          const k = getStarUniqueKey(it);
-          if (hugUpdates.has(k)) {
-            it.hugs = Math.max(it.hugs || 1, hugUpdates.get(k));
-          }
-        });
-
-        saveStoredItems(merged);
-        renderSharedItems(false);
-        updateSyncStatusBadge('🌐 Hộp sao chung', true);
-      } catch (e) {
-        updateSyncStatusBadge('💾 Đã lưu tại lọ sao', false);
-      }
+      await fetchStarsFromGoogleSheet();
     }
 
     function subscribeLiveSharedStars() {
-      if (typeof EventSource !== 'undefined') {
-        try {
-          if (liveStarEventSource) liveStarEventSource.close();
-          liveStarEventSource = new EventSource(`https://ntfy.sh/${SHARED_STAR_CHANNEL}/sse`);
-          liveStarEventSource.onmessage = (event) => {
-            try {
-              const evt = JSON.parse(event.data);
-              if (evt && evt.message) {
-                applyCloudStarMessage(evt.message);
-              }
-            } catch (e) {}
-          };
-        } catch (e) {}
-      }
-      // Tự động làm mới mỗi 10 giây để mọi người luôn thấy sao mới (hoặc cập nhật ngay khi xóa dòng trong Google Sheet)
+      // Tự động đồng bộ trực tiếp từ Google Sheet mỗi 6 giây
       setInterval(() => {
-        syncSharedStarsFromCloud();
-      }, 10000);
+        fetchStarsFromGoogleSheet();
+      }, 6000);
     }
 
-    // Đọc file stars.json nếu chưa nối Google Sheet
     async function loadStarsFromJsonFile() {
-      if (getActiveGoogleSheetUrl()) return;
-      try {
-        const resp = await fetch(`./stars.json?v=${Date.now()}`);
-        if (!resp.ok) return;
-        const jsonStars = await resp.json();
-        if (Array.isArray(jsonStars) && jsonStars.length > 0) {
-          const currentLocal = getStoredItems();
-          const merged = mergeUniqueStarLists([currentLocal, jsonStars]);
-          saveStoredItems(merged);
-          renderSharedItems(false);
-        }
-      } catch (e) {}
+      // Đã dùng trực tiếp Google Sheet nên không gộp stars.json để tránh ghi đè lại các dòng đã xóa
     }
 
     // Xuất toàn bộ các ngôi sao hiện có trong lọ (bao gồm sao khách thăm web vừa gõ) ra file stars.json
