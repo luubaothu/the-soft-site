@@ -1140,6 +1140,39 @@
 
     const STAR_COLORS = ['#FFB8CE', '#FFF3B0', '#B8F2E6', '#AED9E0', '#E2C6FF', '#FFC8A2'];
 
+    // ================= BỘ LỌC TỪ NGỮ BẬY BẠ / NHẠY CẢM (CENSOR PROFANITY) =================
+    const PROFANITY_PATTERNS = [
+      // Viết tắt & teencode chửi bậy
+      /\b(đcm|dcm|đmm|dmm|đkm|dkm|đyt|dyt|vcl|vkl|vcc|vloz|vl|clgt|cl|cmm|vcll|vch|đm|dm|dume|đume)\b/gi,
+      // Cụm từ thô tục, chửi thề
+      /\b(đụ\s*má|du\s*ma|đụ\s*mẹ|du\s*me|địt\s*mẹ|dit\s*me|địt\s*cụ|dit\s*cu|mẹ\s*mày|me\s*may|má\s*mày|ma\s*may|bố\s*mày|bo\s*may)\b/gi,
+      // Địt, đụ, đéo, đù
+      /\b(địt|dit|đụ|đẹo|đéo|đù|đệt)\b/gi,
+      // Bộ phận nhạy cảm / tình dục thô
+      /\b(cặc|buồi|lồn|dái|hột\s*le|thủ\s*dâm|sục\s*cặc|cak|buoi|lon\b|lz\b|cacc\b|chịch|xoạc|nứng)\b/gi,
+      // Xúc phạm, nguyền rủa
+      /\b(chó\s*đẻ|cho\s*de|chó\s*chết|cho\s*chet|thằng\s*chó|đồ\s*chó|súc\s*vật|suc\s*vat|đĩ|điếm|con\s*đĩ|mất\s*dạy|mat\s*day|khốn\s*nạn|khon\s*nan)\b/gi,
+      // Tiếng Anh phổ biến
+      /\b(fuck|fucking|fucker|fck|fuk|shit|bitch|asshole|bastard|dick|pussy|cunt|slut|whore)\b/gi
+    ];
+
+    function censorBadWords(text) {
+      if (!text || typeof text !== 'string') return text || '';
+      let clean = text;
+      PROFANITY_PATTERNS.forEach(pattern => {
+        clean = clean.replace(pattern, match => '*'.repeat(match.length));
+      });
+      return clean;
+    }
+
+    function hasBadWords(text) {
+      if (!text || typeof text !== 'string') return false;
+      return PROFANITY_PATTERNS.some(p => {
+        p.lastIndex = 0;
+        return p.test(text);
+      });
+    }
+
     function clearAllLegacyStarCaches() {
       LEGACY_STORAGE_KEYS.forEach(k => {
         try { localStorage.removeItem(k); } catch (e) {}
@@ -1599,7 +1632,11 @@
     }
 
     function getUserDisplayInfo() {
-      const rawName = document.getElementById('userNameInput').value.trim();
+      let rawName = document.getElementById('userNameInput').value.trim();
+      rawName = censorBadWords(rawName).trim();
+      if (/^[\*\s]+$/.test(rawName)) {
+        rawName = '';
+      }
       const privacy = document.querySelector('input[name="privacyMode"]:checked').value;
       const isSecret = privacy === 'secret';
       const displayName = isSecret
@@ -1811,9 +1848,18 @@
       const text = input.value.trim();
       if (!text) return;
 
+      const replyBox = document.getElementById('comfortReply');
+
+      if (actionType === 'share') {
+        const cleanedCheck = censorBadWords(text).trim();
+        if (!cleanedCheck || /^[\*\s\.\,\!\?\-]+$/.test(cleanedCheck)) {
+          alert('🌸 Chiếc lọ xin phép chỉ đón nhận những chia sẻ lành mạnh thôi nhé! Hãy gửi những lời dịu dàng hơn nha bạn.');
+          return;
+        }
+      }
+
       const { displayName, isSecret } = getUserDisplayInfo();
       const wrapper = document.getElementById('ventBoxWrapper');
-      const replyBox = document.getElementById('comfortReply');
 
       playSound('magic');
 
@@ -1827,12 +1873,13 @@
         }, 900);
       } else {
         const items = getStoredItems();
+        const safeText = censorBadWords(text).trim();
         const newStar = {
           id: 'star_' + Date.now(),
           type: 'vent',
           author: displayName,
           isSecret,
-          content: text,
+          content: safeText,
           hugs: 1,
           color: '#AED9E0',
           createdAt: getNowDateTimeString()
@@ -1854,6 +1901,12 @@
       const text = input.value.trim();
       if (!text) return;
 
+      const cleanedText = censorBadWords(text).trim();
+      if (!cleanedText || /^[\*\s\.\,\!\?\-]+$/.test(cleanedText)) {
+        alert('🌸 Chiếc lọ xin phép chỉ đón nhận những điều ngọt ngào thôi nhé! Bạn hãy gửi những lời dịu dàng hơn nha.');
+        return;
+      }
+
       const { displayName, isSecret } = getUserDisplayInfo();
       const items = getStoredItems();
       const randomColor = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
@@ -1862,7 +1915,7 @@
         type: 'candy',
         author: displayName,
         isSecret,
-        content: text,
+        content: cleanedText,
         hugs: 1,
         color: randomColor,
         createdAt: getNowDateTimeString()
@@ -1910,10 +1963,12 @@
       const icon = item.type === 'candy' ? '⭐ Ngôi sao của' : '🌧️ Tâm sự của';
       const niceDate = formatStarDateTime(item);
       const dateStr = niceDate ? ` • ${niceDate}` : '';
+      const safeAuthor = censorBadWords(item.author || 'Một người bạn dễ thương');
+      const safeContent = censorBadWords(item.content || '');
 
-      if (authorEl) authorEl.innerText = `${icon}: ${item.author}${dateStr}`;
+      if (authorEl) authorEl.innerText = `${icon}: ${safeAuthor}${dateStr}`;
       if (indexEl) indexEl.innerText = `Sao ${safeIdx + 1}/${items.length}`;
-      if (previewEl) previewEl.innerText = `"${item.content}"`;
+      if (previewEl) previewEl.innerText = `"${safeContent}"`;
       if (hugBtn) hugBtn.innerText = `🫂 Ôm (${item.hugs || 1})`;
 
       // Highlight ngôi sao đang được chọn trong lọ
@@ -1970,10 +2025,12 @@
         const isNewest = animateNewest && idx === 0;
         const animClass = isNewest ? 'star-drop-anim' : '';
         const selectedClass = idx === currentStarIndex ? 'scale-125 ring-2 ring-pinkdark rounded-full bg-white/70' : '';
+        const safeAuthor = censorBadWords(item.author || 'Một người bạn dễ thương');
+        const safeContent = censorBadWords(item.content || '');
         return `
           <button data-star-idx="${idx}"
                   onclick="previewStarInJar(${idx}, true)"
-                  title="Chạm để đọc tâm trạng của ${item.author}: ${item.content}"
+                  title="Chạm để đọc tâm trạng của ${safeAuthor}: ${safeContent}"
                   style="--star-rot: ${rot}deg; transform: rotate(${rot}deg);"
                   class="${animClass} ${starSizeClass} ${selectedClass} hover:scale-125 transition focus:outline-none flex-shrink-0">
             <svg viewBox="0 0 40 40" class="w-full h-full drop-shadow-sm">
@@ -1998,9 +2055,11 @@
         const icon = activeItem.type === 'candy' ? '⭐ Ngôi sao của' : '🌧️ Tâm sự của';
         const niceDate = formatStarDateTime(activeItem);
         const dateStr = niceDate ? ` • ${niceDate}` : '';
-        if (authorEl) authorEl.innerText = `${icon}: ${activeItem.author}${dateStr}`;
+        const safeActiveAuthor = censorBadWords(activeItem.author || 'Một người bạn dễ thương');
+        const safeActiveContent = censorBadWords(activeItem.content || '');
+        if (authorEl) authorEl.innerText = `${icon}: ${safeActiveAuthor}${dateStr}`;
         if (indexEl) indexEl.innerText = `Sao ${currentStarIndex + 1}/${items.length}`;
-        if (previewEl) previewEl.innerText = `"${activeItem.content}"`;
+        if (previewEl) previewEl.innerText = `"${safeActiveContent}"`;
         if (hugBtn) hugBtn.innerText = `🫂 Ôm (${activeItem.hugs || 1})`;
       } else {
         if (authorEl) authorEl.innerText = '⭐ Hộp sao trống';
@@ -2025,14 +2084,16 @@
           const privacyTag = item.isSecret ? '🤫 Bí mật' : '🌟 Công khai';
           const niceDate = formatStarDateTime(item);
           const dateTag = niceDate ? ` • ${niceDate}` : '';
+          const safeAuthor = censorBadWords(item.author || 'Một người bạn dễ thương');
+          const safeContent = censorBadWords(item.content || '');
 
           return `
             <div onclick="previewStarInJar(${idx}, true)" class="${bgClass} border-2 border-choco rounded-2xl p-3 text-xs cursor-pointer hover:brightness-98 transition">
               <div class="flex flex-wrap items-center justify-between mb-1.5 gap-1">
-                <span class="font-bold text-choco">${badgeIcon} ${item.author}</span>
+                <span class="font-bold text-choco">${badgeIcon} ${safeAuthor}</span>
                 <span class="text-[10px] bg-white/85 px-2 py-0.5 rounded-full border border-choco whitespace-nowrap">${privacyTag}${dateTag}</span>
               </div>
-              <p class="text-choco/90 mb-2 leading-relaxed">${item.content}</p>
+              <p class="text-choco/90 mb-2 leading-relaxed">${safeContent}</p>
               <div class="flex justify-end">
                 <button onclick="event.stopPropagation(); sendHug(${idx})" class="bg-white hover:bg-butter px-2.5 py-1 rounded-full border border-choco font-bold text-[11px] transition">
                   🫂 Gửi cái ôm (${item.hugs || 1})
