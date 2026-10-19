@@ -1669,8 +1669,8 @@
     }
 
     // ================= KẾT NỐI GOOGLE SHEET & ĐỒNG BỘ HỘP SAO CHUNG CHO MỌI NGƯỜI =================
-    // Dán trực tiếp link Web App Google Sheet (https://script.google.com/macros/s/.../exec) vào DEFAULT_GOOGLE_SHEET_URL:
-    const DEFAULT_GOOGLE_SHEET_URL = '';
+    // Link Web App Google Sheet lưu dữ liệu hộp sao chung:
+    const DEFAULT_GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxDcs0kKoQfvC6NZod66KeMqVqEYs-91NKh26eROJZQKts3Ezwuy68HkQcqvymOz45H/exec';
     const GOOGLE_SHEET_STORAGE_KEY = 'the_soft_site_google_sheet_url_v1';
     const SHARED_STAR_CHANNEL = 'the_soft_site_lbt_nhom_2026_stars_v2';
     const LEGACY_STAR_CHANNEL = 'the_soft_site_lbt_to_2026_stars_v1';
@@ -1706,7 +1706,7 @@
           const merged = mergeUniqueStarLists([data.items, currentItems]);
           saveStoredItems(merged);
           renderSharedItems(false);
-          updateSyncStatusBadge('📊 Đã đồng bộ Google Sheet', true);
+          updateSyncStatusBadge('🌐 Hộp sao chung', true);
           return true;
         }
       } catch (e) {
@@ -1717,7 +1717,7 @@
             const merged = mergeUniqueStarLists([dataGet.items, getStoredItems()]);
             saveStoredItems(merged);
             renderSharedItems(false);
-            updateSyncStatusBadge('📊 Đã đồng bộ Google Sheet', true);
+            updateSyncStatusBadge('🌐 Hộp sao chung', true);
             return true;
           }
         } catch (err2) {}
@@ -1733,11 +1733,14 @@
         if (!resp.ok) return false;
         const data = await resp.json();
         if (data && Array.isArray(data.items)) {
+          if (data.items.length === 0) {
+            return await syncBatchWithGoogleSheet(targetUrl);
+          }
           const localItems = getStoredItems();
           const merged = mergeUniqueStarLists([data.items, localItems]);
           saveStoredItems(merged);
           renderSharedItems(false);
-          updateSyncStatusBadge('📊 Đã đồng bộ Google Sheet', true);
+          updateSyncStatusBadge('🌐 Hộp sao chung', true);
           return true;
         }
       } catch (e) {}
@@ -1947,7 +1950,7 @@
 
         saveStoredItems(merged);
         renderSharedItems(false);
-        updateSyncStatusBadge(getActiveGoogleSheetUrl() ? '📊 Đã nối Google Sheet' : '🌐 Hộp sao chung', true);
+        updateSyncStatusBadge('🌐 Hộp sao chung', true);
       } catch (e) {
         if (!hasSheet) {
           updateSyncStatusBadge('💾 Đã lưu tại lọ sao', false);
